@@ -1,0 +1,75 @@
+#Jenkinsfile container the Script code for Java Basic Project
+
+pipeline {
+    agent any
+    tools {
+        maven 'my_maven'
+    }
+    stages {
+        stage('Code') {
+            steps {
+                git 'https://github.com/Vinaikumarp/dockerwebapp.git'
+            }
+        }
+        stage('Build') {
+            steps {
+                sh 'mvn clean install'
+            }
+        }
+        stage('CQA') {
+            steps {
+                withSonarQubeEnv('mysonar') {
+                    sh '''
+                        mvn clean verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
+                        -Dsonar.projectKey=myApp \
+                        -Dsonar.projectName='myApp' \
+                        -Dsonar.host.url=http://35.72.181.180:9000 \
+                        -Dsonar.token=sqp_dfff52adc63af5642364b107f4141cfe89cefa5b
+                    '''
+                }
+            }
+        }
+        stage('Quality Gate') {
+            steps {
+                waitForQualityGate abortPipeline: true, credentialsId: 'mysonar'
+            }
+        }
+        stage('artifact') {
+            steps {
+                nexusArtifactUploader artifacts: [[artifactId: 'vprofile', classifier: '', file: 'target/vprofile-v2.war', type: 'war']], credentialsId: 'nexus', groupId: 'com.visualpathit', nexusUrl: '13.193.180.242:8081', nexusVersion: 'nexus3', protocol: 'http', repository: 'myrepo', version: 'v2'
+            }
+        }
+        stage('Build image') {
+            steps {
+                sh 'cp -r target Docker-app'
+                sh 'docker build -t appimage:1.0 Docker-app'
+                sh 'docker build -t dbimage:1.0 Docker-db'
+                
+                sh 'docker images'
+            }
+        }
+        stage('trivy Scan') {
+            steps {
+                sh 'trivy image appimage:1.0'
+                sh 'trivy image dbimage:1.0'
+            }
+        }
+        stage('push images to docker hub') {
+            steps {
+                script {
+                    withDockerRegistry(credentialsId: 'dockerhub') {
+                        sh 'docker tag appimage:1.0 vinaikumarp/java-app:1.0'
+                        sh 'docker tag dbimage:1.0 vinaikumarp/db-app:1.0'    
+                        sh 'docker push vinaikumarp/java-app:1.0'
+                        sh 'docker push vinaikumarp/db-app:1.0'
+                    }
+                }
+            }
+        }
+        stage('Deploy') {
+            steps{
+                sh 'docker stack deploy myapp --compose-file=compose.yml'
+            }
+        }
+    }
+}
