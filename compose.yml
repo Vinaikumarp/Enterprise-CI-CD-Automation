@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   devopsdb:
-    image: shaikmustafa/flm-oct:db
+    image: vinaikumarp/db-app:1.0
     ports:
       - "3306:3306"
     deploy:
@@ -11,9 +11,9 @@ services:
       - mynetwork
 
   application:
-    image: shaikmustafa/flm-oct:javaapp
+    image: vinaikumarp/java-app:1.0
     ports:
-      - "1111:8080"
+      - "1113:8080"
     deploy:
       replicas: 3
     depends_on:
