@@ -6,6 +6,13 @@ services:
     ports:
       - "3306:3306"
     deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 1500M
+        reservations:
+          cpus: "4"
+          memory: 3000M
       replicas: 1
     networks:
       - mynetwork
@@ -15,6 +22,13 @@ services:
     ports:
       - "1113:8080"
     deploy:
+      resources:
+          limits:
+            cpus: "2"
+            memory: 4000M
+          reservations:
+            cpus: "4"
+            memory: 6000M
       replicas: 3
     depends_on:
       - devopsdb
